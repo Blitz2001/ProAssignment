@@ -15,13 +15,13 @@ export const SocketProvider = ({ children }) => {
     useEffect(() => {
         if (user && user.id) {
             // Connect to the socket server
-            // Use REACT_APP_API_URL for production, fallback to localhost for development
-            const socketUrl = process.env.REACT_APP_API_URL 
-                ? process.env.REACT_APP_API_URL.replace('/api', '') // Remove /api if present
-                : process.env.REACT_APP_SOCKET_URL || 'http://localhost:5000';
-            
+            // Use environment variable for production, fallback to localhost for development
+            const socketUrl = import.meta.env.VITE_API_URL
+                ? import.meta.env.VITE_API_URL.replace('/api', '')
+                : (import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000');
+
             console.log('Socket: Connecting to', socketUrl, 'for user', user.id);
-            
+
             const newSocket = io(socketUrl, {
                 transports: ['websocket', 'polling'],
                 autoConnect: true,

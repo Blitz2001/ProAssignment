@@ -37,10 +37,17 @@ const AppContent = () => {
     }
 };
 
+import { SocketProvider } from './context/SocketContext.jsx';
+import { AssignmentUnreadProvider } from './context/AssignmentUnreadContext.jsx';
+
 const App = () => {
     return (
         <AuthProvider>
-            <AppContent />
+            <SocketProvider>
+                <AssignmentUnreadProvider>
+                    <AppContent />
+                </AssignmentUnreadProvider>
+            </SocketProvider>
         </AuthProvider>
     );
 };
