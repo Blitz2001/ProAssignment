@@ -59,16 +59,16 @@ import mongoose from 'mongoose';
 const startServer = async () => {
   try {
     await connectDB();
-    
+
     // Wait a moment to ensure connection is stable
     await new Promise(resolve => setTimeout(resolve, 500));
-    
+
     // Verify connection is ready
     if (mongoose.connection.readyState !== 1) {
       console.error('❌ CRITICAL: Database connection not ready after connectDB()!');
       process.exit(1);
     }
-    
+
     console.log('✅ Database connection verified - Ready to accept requests');
   } catch (dbError) {
     console.error('❌ Failed to connect to database:', dbError);
@@ -88,16 +88,18 @@ const server = http.createServer(app);
 app.set('trust proxy', 1);
 
 // Configure CORS based on environment
-const allowedOrigins = process.env.ALLOWED_ORIGINS
-  ? process.env.ALLOWED_ORIGINS.split(',')
-  : (process.env.NODE_ENV === 'production' 
-      ? ['http://localhost:3000'] // Update with your production frontend URL
+const allowedOrigins = process.env.CORS_ORIGIN
+  ? [process.env.CORS_ORIGIN]
+  : process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(',')
+    : (process.env.NODE_ENV === 'production'
+      ? ['http://localhost:3000'] // Fallback for production
       : ['http://localhost:3000', 'http://localhost:5173']); // Vite default port
 
 const io = new Server(server, {
   cors: {
-    origin: process.env.NODE_ENV === 'production' 
-      ? allowedOrigins[0] 
+    origin: process.env.NODE_ENV === 'production'
+      ? allowedOrigins[0]
       : '*', // Allow all in development
     credentials: true,
   },
