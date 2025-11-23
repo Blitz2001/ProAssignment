@@ -5,6 +5,8 @@ import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '');
+  console.log('🔍 Build mode:', mode);
+  console.log('🔍 VITE_API_URL:', env.VITE_API_URL || process.env.VITE_API_URL || 'NOT SET');
   return {
     server: {
       port: 3000,
