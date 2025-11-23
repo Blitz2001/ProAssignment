@@ -1,6 +1,5 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
 
 /* Global styles */
 * {
@@ -23,9 +22,17 @@ body {
 }
 
 @keyframes gradientShift {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
 }
 
 /* Floating blurred blobs for depth */
@@ -37,22 +44,40 @@ body {
   will-change: transform;
 }
 
-.blob--slow { animation-duration: 24s; }
-.blob--fast { animation-duration: 12s; }
+.blob--slow {
+  animation-duration: 24s;
+}
+
+.blob--fast {
+  animation-duration: 12s;
+}
 
 @keyframes float {
-  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
-  25% { transform: translate3d(20px, -10px, 0) scale(1.05); }
-  50% { transform: translate3d(-10px, 10px, 0) scale(0.98); }
-  75% { transform: translate3d(-25px, -5px, 0) scale(1.03); }
+
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+
+  25% {
+    transform: translate3d(20px, -10px, 0) scale(1.05);
+  }
+
+  50% {
+    transform: translate3d(-10px, 10px, 0) scale(0.98);
+  }
+
+  75% {
+    transform: translate3d(-25px, -5px, 0) scale(1.03);
+  }
 }
 
 /* Card lift on hover */
 .lift {
   transition: transform 300ms ease, box-shadow 300ms ease;
 }
+
 .lift:hover {
   transform: translateY(-4px);
   box-shadow: 0 12px 30px -8px rgba(37, 99, 235, 0.35);
 }
-
