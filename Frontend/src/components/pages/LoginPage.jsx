@@ -23,21 +23,25 @@ const LoginPage = () => {
         } catch (err) {
             // Extract error message from response
             let errorMessage = `Failed to ${isRegistering ? 'sign up' : 'log in'}. Please try again.`;
-            
+
             if (err.response?.data?.message) {
-                errorMessage = err.response.data.message;
+                errorMessage = typeof err.response.data.message === 'object'
+                    ? JSON.stringify(err.response.data.message)
+                    : err.response.data.message;
             } else if (err.response?.data?.error) {
-                errorMessage = err.response.data.error;
+                errorMessage = typeof err.response.data.error === 'object'
+                    ? JSON.stringify(err.response.data.error)
+                    : err.response.data.error;
             } else if (err.message) {
                 errorMessage = err.message;
             }
-            
-            setError(errorMessage);
+
+            setError(String(errorMessage));
         } finally {
             setIsLoading(false);
         }
     };
-    
+
     const toggleForm = () => {
         setIsRegistering(!isRegistering);
         setError('');
@@ -58,7 +62,7 @@ const LoginPage = () => {
                 <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
                     <div className="rounded-md shadow-sm -space-y-px">
                         {isRegistering && (
-                             <div>
+                            <div>
                                 <label htmlFor="name" className="sr-only">Full Name</label>
                                 <input
                                     id="name"
@@ -118,7 +122,7 @@ const LoginPage = () => {
                             {isLoading ? 'Processing...' : (isRegistering ? 'Sign Up' : 'Log In')}
                         </button>
                     </div>
-                     <div className="text-sm text-center">
+                    <div className="text-sm text-center">
                         <button type="button" onClick={toggleForm} className="font-medium text-indigo-600 hover:text-indigo-500">
                             {isRegistering ? 'Already have an account? Log In' : "Don't have an account? Sign Up"}
                         </button>

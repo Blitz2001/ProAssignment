@@ -1,10 +1,9 @@
 import axios from 'axios';
 
 // Axios instance with interceptor for auth headers
-// Use environment variable for production, fallback to '/api' for development (Create React App proxy)
-// Create React App uses process.env.REACT_APP_* for environment variables
-const apiBaseURL = process.env.REACT_APP_API_URL 
-    ? `${process.env.REACT_APP_API_URL}/api` 
+// Use environment variable for production, fallback to '/api' for development (Vite proxy)
+const apiBaseURL = import.meta.env.VITE_API_URL
+    ? `${import.meta.env.VITE_API_URL}/api`
     : '/api'; // Use proxy defined in package.json for development
 
 const api = axios.create({
