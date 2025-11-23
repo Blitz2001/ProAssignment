@@ -1,0 +1,89 @@
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { User, UserRole } from '../types';
+import { loginUser, registerUser } from '../services/api';
+
+interface AuthContextType {
+    user: (User & { token?: string }) | null;
+    isAuthenticated: boolean;
+    isLoading: boolean;
+    login: (email: string, pass: string) => Promise<void>;
+    register: (name: string, email: string, pass: string) => Promise<void>;
+    logout: () => void;
+    updateUserInContext: (updatedUserData: Partial<User & { token?: string }>) => void;
+}
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+    const [user, setUser] = useState<(User & { token?: string }) | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        try {
+            const savedUser = localStorage.getItem('user');
+            if (savedUser) {
+                setUser(JSON.parse(savedUser));
+            }
+        } catch (error) {
+            console.error("Failed to parse user from localStorage", error);
+            localStorage.removeItem('user');
+        } finally {
+            setIsLoading(false);
+        }
+    }, []);
+
+    const login = async (email: string, pass: string) => {
+        const response = await loginUser(email, pass);
+        localStorage.setItem('user', JSON.stringify(response.data));
+        setUser(response.data);
+    };
+    
+    const register = async (name: string, email: string, pass: string) => {
+        const response = await registerUser({ name, email, password: pass, role: 'user' });
+        localStorage.setItem('user', JSON.stringify(response.data));
+        setUser(response.data);
+    };
+
+    const logout = () => {
+        localStorage.removeItem('user');
+        setUser(null);
+    };
+    
+    const updateUserInContext = useCallback((updatedUserData: Partial<User & { token?: string }>) => {
+        setUser(currentUser => {
+            if (!currentUser) return null;
+            
+            const updatedUser = { 
+                ...currentUser, 
+                ...updatedUserData,
+            };
+
+            localStorage.setItem('user', JSON.stringify(updatedUser));
+            return updatedUser;
+        });
+    }, []);
+
+    const value = {
+        user,
+        isAuthenticated: !!user,
+        isLoading,
+        login,
+        register,
+        logout,
+        updateUserInContext,
+    };
+
+    return (
+        <AuthContext.Provider value={value}>
+            {children}
+        </AuthContext.Provider>
+    );
+};
+
+export const useAuth = () => {
+    const context = useContext(AuthContext);
+    if (context === undefined) {
+        throw new Error('useAuth must be used within an AuthProvider');
+    }
+    return context;
+};

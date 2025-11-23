@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Assignment Solutions Co.</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter for a modern professional look, Source Code Pro for potential code snippets -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Source+Code+Pro:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+      :root {
+        /* New Light Theme Palette - Vibrant Professional */
+        --color-bg-primary: #F8FAFC; /* Very light blue-gray for main body background */
+        --color-bg-card: #FFFFFF;    /* Pure white for card backgrounds */
+        --color-text-dark: #2C3E50;  /* Dark navy blue for primary text */
+        --color-text-medium: #607D8B; /* Medium blue-gray for secondary text/details */
+        --color-accent-primary: #007BFF; /* Primary vibrant blue */
+        --color-accent-secondary: #00BCD4; /* Secondary vibrant cyan */
+        --color-gradient-start: #007BFF; /* Deep Blue for gradients */
+        --color-gradient-end: #00D4FF;   /* Bright Cyan for gradients */
+        --color-border-card: rgba(0, 0, 0, 0.08); /* Subtle light border for cards */
+        --color-shadow-base: rgba(0, 0, 0, 0.1); /* Base shadow for light backgrounds */
+        --color-button-glow: rgba(0, 123, 255, 0.4); /* Blue glow for buttons */
+        --color-input-bg: #EBF2F7; /* Light background for inputs */
+        --color-input-border: #CBD5E0; /* Light border for inputs */
+        --color-accent-primary-rgb: 0, 123, 255; /* RGB for primary accent for rgba usage */
+        --color-accent-secondary-rgb: 0, 188, 212; /* RGB for secondary accent for rgba usage */
+      }
+
+      body {
+        font-family: 'Inter', sans-serif;
+        font-weight: 400; /* Default text weight for readability */
+        overflow-x: hidden; /* Prevent horizontal scroll for animations */
+        cursor: none; /* Hide default cursor */
+        min-height: 100vh; /* Ensure body takes full viewport height */
+        background-attachment: fixed; /* Fix background for scroll effect */
+        background-color: var(--color-bg-primary); /* Apply new light background color */
+        color: var(--color-text-dark); /* Apply primary text color globally */
+      }
+
+      /* Custom glowing cursor */
+      .cursor-glow {
+        position: fixed;
+        width: 18px; /* Slightly smaller */
+        height: 18px; /* Slightly smaller */
+        background-color: var(--color-accent-primary); /* Vibrant blue glow */
+        border-radius: 50%;
+        pointer-events: none;
+        opacity: 0.2; /* Adjusted opacity for light theme */
+        transform: translate(-50%, -50%);
+        transition: width 0.2s ease-out, height 0.2s ease-out, opacity 0.2s ease-out;
+        z-index: 9999;
+        mix-blend-mode: overlay; /* Blend with background for a luminous effect */
+        filter: blur(4px); /* Adjusted blur */
+      }
+      .cursor-glow.active {
+        width: 32px; /* Slightly smaller */
+        height: 32px; /* Slightly smaller */
+        opacity: 0.3; /* Adjusted opacity */
+      }
+
+      /* Custom scrollbar for a modern look */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: var(--color-bg-primary); /* Light track */
+        border-radius: 10px;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: var(--color-accent-primary); /* Vibrant blue thumb */
+        border-radius: 10px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: var(--color-accent-secondary); /* Vibrant cyan on hover */
+      }
+
+      /* Custom Shadows for Light Theme */
+      .shadow-sm { box-shadow: 0 1px 2px var(--color-shadow-base); }
+      .shadow-md { box-shadow: 0 4px 6px var(--color-shadow-base); }
+      .shadow-lg { box-shadow: 0 10px 15px var(--color-shadow-base), 0 4px 6px rgba(0, 0, 0, 0.05); }
+      .shadow-xl { box-shadow: 0 20px 25px var(--color-shadow-base), 0 10px 10px rgba(0, 0, 0, 0.05); }
+      .shadow-2xl { box-shadow: 0 25px 50px var(--color-shadow-base); }
+      .shadow-3xl { box-shadow: 0 15px 30px var(--color-shadow-base), 0 5px 15px rgba(0, 0, 0, 0.05); }
+      .shadow-4xl { box-shadow: 0 30px 60px var(--color-shadow-base), 0 15px 30px rgba(0, 0, 0, 0.1); }
+      .shadow-inner-light { /* Subtle inner shadow for light inputs */
+        box-shadow: inset 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+      }
+      .text-shadow-sm {
+          text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+      }
+      .text-shadow-md {
+          text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+      }
+
+      /* Advanced Custom Animations */
+      @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+      @keyframes fadeOut {
+        from { opacity: 1; }
+        to { opacity: 0; }
+      }
+      @keyframes slideUp {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      @keyframes slideInLeft {
+        from { opacity: 0; transform: translateX(-20px); }
+        to { opacity: 1; transform: translateX(0); }
+      }
+      @keyframes slideInRight {
+        from { opacity: 0; transform: translateX(20px); }
+        to { opacity: 1; transform: translateX(0); }
+      }
+      @keyframes pulseBg {
+        0%, 100% { background-color: var(--color-bg-primary); }
+        50% { background-color: rgba(248, 250, 252, 0.8); } /* Lighter pulse */
+      }
+      @keyframes textReveal {
+        0% {
+          opacity: 0;
+          transform: translateY(15px);
+          filter: blur(3px);
+        }
+        100% {
+          opacity: 1;
+          transform: translateY(0);
+          filter: blur(0);
+        }
+      }
+      @keyframes bounceIn {
+        0% { transform: scale(0.9); opacity: 0; }
+        60% { transform: scale(1.02); opacity: 1; }
+        80% { transform: scale(0.99); }
+        100% { transform: scale(1); opacity: 1; }
+      }
+      @keyframes skewIn {
+        0% { opacity: 0; transform: translateX(-40px) skewX(-10deg); }
+        100% { opacity: 1; transform: translateX(0) skewX(0deg); }
+      }
+      @keyframes floating {
+        0% { transform: translateY(0px) rotate(0deg); }
+        50% { transform: translateY(-7px) rotate(1deg); }
+        100% { transform: translateY(0px) rotate(0deg); }
+      }
+      @keyframes floating-medium {
+        0% { transform: translateY(0px) rotate(0deg) translateX(0px); }
+        33% { transform: translateY(-8px) rotate(2deg) translateX(4px); }
+        66% { transform: translateY(-4px) rotate(-1deg) translateX(-4px); }
+        100% { transform: translateY(0px) rotate(0deg) translateX(0px); }
+      }
+      @keyframes floating-slow {
+        0% { transform: translateY(0px) rotate(0deg) scale(1); }
+        40% { transform: translateY(-5px) rotate(1deg) scale(1.01); }
+        80% { transform: translateY(-2px) rotate(-0.5deg) scale(0.99); }
+        100% { transform: translateY(0px) rotate(0deg) scale(1); }
+      }
+      @keyframes rotate-subtle {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+      @keyframes gradientShift {
+        0% { background-position: 0% 50%; }
+        100% { background-position: 100% 50%; }
+      }
+      @keyframes glowShadow {
+        0% { box-shadow: 0 4px 15px var(--color-button-glow); }
+        50% { box-shadow: 0 7px 20px var(--color-button-glow); }
+        100% { box-shadow: 0 4px 15px var(--color-button-glow); }
+      }
+      @keyframes scaleIn {
+        from { opacity: 0; transform: scale(0.95); filter: blur(10px); }
+        to { opacity: 1; transform: scale(1); filter: blur(0px); }
+      }
+      @keyframes scaleOut {
+        from { opacity: 1; transform: scale(1); filter: blur(0px); }
+        to { opacity: 0; transform: scale(0.95); filter: blur(10px); }
+      }
+
+      .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
+      .animate-fade-out { animation: fadeOut 0.3s ease-out forwards; }
+      .animate-slide-up { animation: slideUp 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
+      .animate-slide-in-left { animation: slideInLeft 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
+      .animate-slide-in-right { animation: slideInRight 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
+      .animate-pulse-bg { animation: pulseBg 8s infinite alternate ease-in-out; }
+      .animate-text-reveal { animation: textReveal 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
+      .animate-bounce-in { animation: bounceIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+      .animate-skew-in { animation: skewIn 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
+      .animate-floating { animation: floating 4s ease-in-out infinite alternate; }
+      .animate-floating-medium { animation: floating-medium 6s ease-in-out infinite alternate; }
+      .animate-floating-slow { animation: floating-slow 8s ease-in-out infinite alternate; }
+      .animate-rotate-subtle { animation: rotate-subtle 30s linear infinite; }
+      .animate-gradient-shift { animation: gradientShift 15s ease-in-out infinite alternate; }
+      .animate-glow-shadow { animation: glowShadow 1.5s ease-in-out infinite; }
+      .animate-scale-in { animation: scaleIn 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards; }
+      .animate-scale-out { animation: scaleOut 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards; }
+
+
+      /* Delay utilities for staggered animations */
+      .delay-50 { animation-delay: 0.05s; }
+      .delay-100 { animation-delay: 0.1s; }
+      .delay-150 { animation-delay: 0.15s; }
+      .delay-200 { animation-delay: 0.2s; }
+      .delay-250 { animation-delay: 0.25s; }
+      .delay-300 { animation-delay: 0.3s; }
+      .delay-350 { animation-delay: 0.35s; }
+      .delay-400 { animation-delay: 0.4s; }
+      .delay-450 { animation-delay: 0.45s; }
+      .delay-500 { animation-delay: 0.5s; }
+      .delay-600 { animation-delay: 0.6s; }
+      .delay-700 { animation-delay: 0.7s; }
+      .delay-800 { animation-delay: 0.8s; }
+      .delay-900 { animation-delay: 0.9s; }
+      .delay-1000 { animation-delay: 1s; }
+      .delay-1100 { animation-delay: 1.1s; }
+      .delay-1200 { animation-delay: 1.2s; }
+      .delay-1300 { animation-delay: 1.3s; }
+      .delay-1400 { animation-delay: 1.4s; }
+      .delay-1500 { animation-delay: 1.5s; }
+    </style>
+<script type="importmap">
+{
+  "imports": {
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+<body class="bg-blue-50 text-gray-900 antialiased relative" style="background-color: var(--color-bg-primary); color: var(--color-text-dark);">
+    <!-- Dynamic Background Gradient Overlay -->
+    <div class="fixed inset-0 z-0 opacity-8" style="background: linear-gradient(-45deg, var(--color-gradient-start), var(--color-bg-primary), var(--color-gradient-end), var(--color-bg-primary)); background-size: 400% 400%; animation: gradientShift 20s ease infinite alternate;"></div>
+    <!-- Subtle Dot Pattern Overlay (adjusted for light theme) -->
+    <div class="fixed inset-0 z-0 opacity-3 pointer-events-none" style="background-image: radial-gradient(circle, rgba(0,0,0,0.08) 1px, rgba(0,0,0,0) 1px); background-size: 20px 20px;"></div>
+
+    <!-- Additional Background Shapes for dynamic UI (adjusted for light theme) -->
+    <div class="fixed top-1/4 -left-8 w-40 h-40 bg-[rgba(var(--color-accent-primary-rgb),0.05)] rounded-full mix-blend-normal filter blur-3xl opacity-10 animate-floating-medium z-0 delay-200 animate-rotate-subtle"></div>
+    <div class="fixed bottom-1/3 -right-8 w-56 h-56 bg-[rgba(var(--color-accent-secondary-rgb),0.05)] rounded-lg transform rotate-45 mix-blend-normal filter blur-3xl opacity-8 animate-floating-slow z-0 delay-500"></div>
+    <div class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-[rgba(var(--color-accent-primary-rgb),0.04)] rounded-full mix-blend-normal filter blur-3xl opacity-6 animate-floating z-0 delay-800"></div>
+    <div class="fixed top-4 right-4 w-36 h-36 bg-[rgba(var(--color-accent-secondary-rgb),0.06)] rounded-full mix-blend-normal filter blur-3xl opacity-12 animate-floating-medium z-0 delay-100 animate-rotate-subtle"></div>
+    <div class="fixed bottom-8 left-8 w-28 h-28 bg-[rgba(var(--color-accent-primary-rgb),0.05)] rounded-xl transform -rotate-12 mix-blend-normal filter blur-3xl opacity-10 animate-floating-slow z-0 delay-300"></div>
+
+
+    <!-- Custom Cursor Glow -->
+    <div id="cursor-glow" class="cursor-glow"></div>
+
+    <div id="root" class="relative z-10"></div>
+
+    <script type="module" src="/index.tsx"></script>
+    <script>
+      // Custom cursor logic
+      const cursorGlow = document.getElementById('cursor-glow');
+      document.addEventListener('mousemove', (e) => {
+        if (cursorGlow) {
+          cursorGlow.style.left = e.clientX + 'px';
+          cursorGlow.style.top = e.clientY + 'px';
+        }
+      });
+      document.addEventListener('mousedown', () => {
+        if (cursorGlow) cursorGlow.classList.add('active');
+      });
+      document.addEventListener('mouseup', () => {
+        if (cursorGlow) cursorGlow.classList.remove('active');
+      });
+      document.addEventListener('mouseenter', () => {
+        if (cursorGlow) cursorGlow.style.display = 'block';
+      });
+      document.addEventListener('mouseleave', () => {
+        if (cursorGlow) cursorGlow.style.display = 'none';
+      });
+    </script>
+</body>
+</html>
