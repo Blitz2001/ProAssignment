@@ -1,6 +1,7 @@
 import asyncHandler from 'express-async-handler';
 import { Conversation, Message } from '../models/chatModel.js';
 import Notification from '../models/notificationModel.js';
+import { createNotificationWithEmail } from '../utils/notificationHelper.js';
 import User from '../models/userModel.js';
 import validateNoContactInfo from '../utils/contactValidation.js';
 
@@ -622,11 +623,12 @@ const sendMessage = asyncHandler(async (req, res) => {
         
         // Create notification for recipient
         try {
-            const notification = await Notification.create({
-                user: recipientIdDocId(recipientId),
+            const notification = await createNotificationWithEmail({
+                userId: recipientIdDocId(recipientId),
                 message: `You have a new message from ${req.user.name}.`,
                 type: 'message',
-                link: '/chat'
+                link: '/chat',
+                req: req
             });
             emitSocketEvent(req, recipientIdStr, 'newNotification', notification.toJSON());
         } catch (notifError) {

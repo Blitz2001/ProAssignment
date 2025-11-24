@@ -4,6 +4,7 @@ import Assignment from '../models/assignmentModel.js';
 import Paysheet from '../models/paysheetModel.js';
 import User from '../models/userModel.js';
 import Notification from '../models/notificationModel.js';
+import { createNotificationWithEmail } from '../utils/notificationHelper.js';
 
 // Helper function to generate PayHere hash
 // PayHere hash format: MD5(merchant_id + order_id + amount + currency + merchant_secret)
@@ -222,11 +223,12 @@ const handlePayHereCallback = asyncHandler(async (req, res) => {
                     for (const admin of admins) {
                         try {
                             const adminId = admin._id.toString();
-                            await Notification.create({
-                                user: adminId,
+                            await createNotificationWithEmail({
+                                userId: adminId,
                                 message: `Client ${assignment.student.name || 'Client'} has completed card payment (${payhere_amount} LKR) for assignment "${assignment.title}".`,
                                 type: 'assignment',
-                                link: '/assignments'
+                                link: '/assignments',
+                                req: req
                             });
                         } catch (notifError) {
                             console.error('Error creating admin notification:', notifError);
@@ -289,11 +291,12 @@ const handlePayHereCallback = asyncHandler(async (req, res) => {
                         const writerId = paysheet.writer._id ? paysheet.writer._id.toString() : paysheet.writer.toString();
                         const amount = typeof paysheet.amount === 'number' ? paysheet.amount.toFixed(2) : '0.00';
                         
-                        await Notification.create({
-                            user: writerId,
+                        await createNotificationWithEmail({
+                            userId: writerId,
                             message: `Your paysheet for ${paysheet.period || 'N/A'} of $${amount} has been paid via card payment.`,
                             type: 'general',
-                            link: '/my-paysheets'
+                            link: '/my-paysheets',
+                            req: req
                         });
                     } catch (notifError) {
                         console.error('Error notifying writer:', notifError);
