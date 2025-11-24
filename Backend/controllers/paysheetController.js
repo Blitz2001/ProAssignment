@@ -2,6 +2,7 @@ import asyncHandler from 'express-async-handler';
 import Paysheet from '../models/paysheetModel.js';
 import User from '../models/userModel.js';
 import Notification from '../models/notificationModel.js';
+import { createNotificationWithEmail } from '../utils/notificationHelper.js';
 import Assignment from '../models/assignmentModel.js';
 
 // Helper function to get period string from date
@@ -901,11 +902,12 @@ const markPaysheetAsPaid = asyncHandler(async (req, res) => {
             try {
                 const amount = typeof paysheet.amount === 'number' ? paysheet.amount.toFixed(2) : '0.00';
                 
-                const notification = await Notification.create({
-                    user: writerId,
+                const notification = await createNotificationWithEmail({
+                    userId: writerId,
                     message: `Your paysheet for ${paysheet.period || 'N/A'} of $${amount} has been marked as paid.`,
                     type: 'general',
-                    link: '/my-paysheets'
+                    link: '/my-paysheets',
+                    req: req
                 });
                 
                 try {
@@ -1065,11 +1067,12 @@ const markAssignmentPaymentAsPaid = asyncHandler(async (req, res) => {
         // Notify writer
         try {
             const amount = typeof assignment.writerPrice === 'number' ? assignment.writerPrice.toFixed(2) : '0.00';
-            const notification = await Notification.create({
-                user: writerIdForNotif,
+            const notification = await createNotificationWithEmail({
+                userId: writerIdForNotif,
                 message: `Payment for assignment "${assignment.title}" of $${amount} has been marked as paid.`,
                 type: 'general',
-                link: '/my-paysheets'
+                link: '/my-paysheets',
+                req: req
             });
 
             try {

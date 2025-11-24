@@ -4,6 +4,7 @@ import path from 'path';
 import Assignment from '../models/assignmentModel.js';
 import User from '../models/userModel.js';
 import Notification from '../models/notificationModel.js';
+import { createNotificationWithEmail } from '../utils/notificationHelper.js';
 import Paysheet from '../models/paysheetModel.js';
 import { Conversation, Message } from '../models/chatModel.js';
 
@@ -488,11 +489,12 @@ const createSubmission = asyncHandler(async (req, res) => {
         admins = await User.find({ role: 'admin' });
     for (const admin of admins) {
             try {
-        const notification = await Notification.create({
-            user: admin._id,
+        const notification = await createNotificationWithEmail({
+            userId: admin._id,
             message: `New submission "${title}" received from ${req.user.name}. Please review and set price.`,
             type: 'assignment',
             link: `/new-submissions`,
+            req: req
         });
         const adminIdForSocket = safeIdToString(admin._id);
         if (adminIdForSocket) {
@@ -808,11 +810,12 @@ const assignWriter = asyncHandler(async (req, res) => {
     // Notify writer - wrap in try-catch
     try {
         if (writer) {
-            const writerNotification = await Notification.create({
-                user: writerId,
+            const writerNotification = await createNotificationWithEmail({
+                userId: writerId,
                 message: `You have been assigned a new task: "${assignment.title}" for $${writerPrice}. Start working on it now!`,
                 type: 'assignment',
-                link: '/my-assignments'
+                link: '/my-assignments',
+                req: req
             });
             emitSocketEvent(req, writerIdStr, 'newNotification', safeNotificationToJSON(writerNotification));
         }
@@ -824,11 +827,12 @@ const assignWriter = asyncHandler(async (req, res) => {
     try {
         if (studentId && assignment.student) {
             const studentIdForNotification = assignment.student._id ? assignment.student._id.toString() : assignment.student.toString();
-            const studentNotification = await Notification.create({
-                user: studentIdForNotification,
+            const studentNotification = await createNotificationWithEmail({
+                userId: studentIdForNotification,
                 message: `A writer has been assigned to your assignment "${assignment.title}". Work is in progress.`,
                 type: 'assignment',
-                link: '/my-assignments'
+                link: '/my-assignments',
+                req: req
             });
             emitSocketEvent(req, studentId, 'newNotification', safeNotificationToJSON(studentNotification));
         }
@@ -1081,11 +1085,12 @@ const uploadCompletedWork = asyncHandler(async (req, res) => {
 
     // Try to create notifications, but don't fail if they can't be created
     try {
-    const studentNotification = await Notification.create({
-        user: assignment.student,
+    const studentNotification = await createNotificationWithEmail({
+        userId: assignment.student,
         message: `Your assignment "${assignment.title}" has been completed and uploaded by the writer. Awaiting admin approval.`,
         type: 'assignment',
-        link: '/my-assignments'
+        link: '/my-assignments',
+        req: req
     });
     const studentIdForSocket = safeIdToString(assignment.student);
     if (studentIdForSocket) {
@@ -1101,11 +1106,12 @@ const uploadCompletedWork = asyncHandler(async (req, res) => {
         admins = await User.find({ role: 'admin' });
     for (const admin of admins) {
             try {
-        const adminNotification = await Notification.create({
-            user: admin._id,
+        const adminNotification = await createNotificationWithEmail({
+            userId: admin._id,
             message: `Writer ${req.user.name} has uploaded completed work for "${assignment.title}". Payment is pending. Please review and approve.`,
             type: 'assignment',
-            link: '/assignments'
+            link: '/assignments',
+            req: req
         });
         const adminIdForSocket = safeIdToString(admin._id);
         if (adminIdForSocket) {
@@ -1215,11 +1221,12 @@ const requestTurnitinReport = asyncHandler(async (req, res) => {
         admins = await User.find({ role: 'admin' });
         for (const admin of admins) {
             try {
-            const notification = await Notification.create({
-                user: admin._id,
-                    message: `Client ${req.user.name} requested a Turnitin report for "${updatedAssignment.title}". Please send request to writer.`,
+            const notification = await createNotificationWithEmail({
+                userId: admin._id,
+                message: `Client ${req.user.name} requested a Turnitin report for "${updatedAssignment.title}". Please send request to writer.`,
                 type: 'report',
-                link: '/assignments'
+                link: '/assignments',
+                req: req
             });
             const adminIdForSocket = safeIdToString(admin._id);
         if (adminIdForSocket) {
@@ -1286,11 +1293,12 @@ const sendReportToWriter = asyncHandler(async (req, res) => {
     // Notify writer - wrap in try-catch
     try {
         if (updatedAssignment.writer) {
-            const writerNotification = await Notification.create({
-                user: updatedAssignment.writer,
+            const writerNotification = await createNotificationWithEmail({
+                userId: updatedAssignment.writer,
                 message: `Admin requested you to submit a Turnitin report for "${updatedAssignment.title}". Please upload the report.`,
                 type: 'report',
-                link: '/my-assignments'
+                link: '/my-assignments',
+                req: req
             });
             const writerIdForSocket = safeIdToString(updatedAssignment.writer);
             if (writerIdForSocket) {
@@ -1398,11 +1406,12 @@ const uploadReport = asyncHandler(async (req, res) => {
         admins = await User.find({ role: 'admin' });
         for (const admin of admins) {
             try {
-                const adminNotification = await Notification.create({
-                    user: admin._id,
+                const adminNotification = await createNotificationWithEmail({
+                    userId: admin._id,
                     message: `Writer ${req.user.name} has submitted the Turnitin report for "${updatedAssignment.title}". Please review and send to client.`,
                     type: 'report',
-                    link: '/assignments'
+                    link: '/assignments',
+                    req: req
                 });
                 const adminIdForSocket = safeIdToString(admin._id);
                 if (adminIdForSocket) {
@@ -1534,11 +1543,12 @@ const sendReportToUser = asyncHandler(async (req, res) => {
     // Notify user - wrap in try-catch
     try {
         if (updatedAssignment.student) {
-            const userNotification = await Notification.create({
-                user: updatedAssignment.student,
+            const userNotification = await createNotificationWithEmail({
+                userId: updatedAssignment.student,
                 message: `Your Turnitin report for "${updatedAssignment.title}" is ready for download.`,
                 type: 'report',
-                link: '/my-assignments'
+                link: '/my-assignments',
+                req: req
             });
             const studentIdForSocket = safeIdToString(updatedAssignment.student);
             if (studentIdForSocket) {
@@ -1667,11 +1677,12 @@ const approveWriterWork = asyncHandler(async (req, res) => {
     // Notify client that work is ready for download - wrap in try-catch
     try {
         if (updatedAssignment.student) {
-    const clientNotification = await Notification.create({
-                user: updatedAssignment.student,
+    const clientNotification = await createNotificationWithEmail({
+                userId: updatedAssignment.student,
                 message: `Your assignment "${updatedAssignment.title}" has been approved! You can now download the completed files and provide feedback.`,
         type: 'assignment',
-        link: '/my-assignments'
+        link: '/my-assignments',
+        req: req
     });
             const studentIdForSocket = safeIdToString(updatedAssignment.student);
             if (studentIdForSocket) {
@@ -1685,11 +1696,12 @@ const approveWriterWork = asyncHandler(async (req, res) => {
     // Notify writer - wrap in try-catch
     try {
         if (updatedAssignment.writer) {
-        const writerNotification = await Notification.create({
-                user: updatedAssignment.writer,
+        const writerNotification = await createNotificationWithEmail({
+                userId: updatedAssignment.writer,
                 message: `Your work on "${updatedAssignment.title}" has been approved by admin!`,
             type: 'assignment',
-            link: '/my-assignments'
+            link: '/my-assignments',
+            req: req
         });
             const writerIdForSocket = safeIdToString(updatedAssignment.writer);
             if (writerIdForSocket) {
@@ -1855,11 +1867,12 @@ const submitAssignmentRating = asyncHandler(async (req, res) => {
             if (updatedAssignment.writer) {
                 const writerIdForNotification = safeIdToString(updatedAssignment.writer);
                 if (writerIdForNotification) {
-                    const writerNotification = await Notification.create({
-                        user: writerIdForNotification,
+                    const writerNotification = await createNotificationWithEmail({
+                        userId: writerIdForNotification,
                         message: `You received a ${rating}-star rating for "${updatedAssignment.title || 'assignment'}".`,
                         type: 'assignment',
-                        link: '/my-assignments'
+                        link: '/my-assignments',
+                        req: req
                     });
                     
                     emitSocketEvent(req, writerIdForNotification, 'newNotification', safeNotificationToJSON(writerNotification));
@@ -2003,11 +2016,12 @@ const setClientPrice = asyncHandler(async (req, res) => {
     // Notify client - wrap in try-catch
     try {
         if (updatedAssignment.student) {
-    const userNotification = await Notification.create({
-                user: updatedAssignment.student,
+    const userNotification = await createNotificationWithEmail({
+                userId: updatedAssignment.student,
                 message: `Price set for your assignment "${updatedAssignment.title}": $${price}. Please accept or reject.`,
         type: 'assignment',
-        link: '/my-assignments'
+        link: '/my-assignments',
+        req: req
     });
             const studentIdForSocket = safeIdToString(updatedAssignment.student);
             if (studentIdForSocket) {
@@ -2111,11 +2125,12 @@ const acceptPrice = asyncHandler(async (req, res) => {
         admins = await User.find({ role: 'admin' });
     for (const admin of admins) {
             try {
-        const notification = await Notification.create({
-            user: admin._id,
+        const notification = await createNotificationWithEmail({
+            userId: admin._id,
                     message: `Client ${req.user.name} accepted the price ($${updatedAssignment.clientPrice}) for "${updatedAssignment.title}". Awaiting payment.`,
             type: 'assignment',
-            link: '/assignments'
+            link: '/assignments',
+            req: req
         });
         const adminIdForSocket = safeIdToString(admin._id);
         if (adminIdForSocket) {
@@ -2217,11 +2232,12 @@ const rejectPrice = asyncHandler(async (req, res) => {
         admins = await User.find({ role: 'admin' });
     for (const admin of admins) {
             try {
-        const notification = await Notification.create({
-            user: admin._id,
+        const notification = await createNotificationWithEmail({
+            userId: admin._id,
                     message: `Client ${req.user.name} rejected the price ($${updatedAssignment.clientPrice}) for "${updatedAssignment.title}". Please set a new price.`,
             type: 'assignment',
-            link: '/assignments'
+            link: '/assignments',
+            req: req
         });
         const adminIdForSocket = safeIdToString(admin._id);
         if (adminIdForSocket) {
@@ -2435,11 +2451,12 @@ const uploadPaymentProof = asyncHandler(async (req, res) => {
                 for (const admin of admins) {
                     try {
                         const adminId = admin._id.toString ? admin._id.toString() : String(admin._id);
-                        const adminNotification = await Notification.create({
-                            user: adminId,
+                        const adminNotification = await createNotificationWithEmail({
+                            userId: adminId,
                             message: `User ${req.user.name || 'Client'} has submitted payment proof for "${assignment.title}". Please review and confirm payment before assigning writer.`,
                             type: 'assignment',
-                            link: '/assignments'
+                            link: '/assignments',
+                            req: req
                         });
                         
                         // Convert notification to JSON safely
@@ -2568,11 +2585,12 @@ const confirmPayment = asyncHandler(async (req, res) => {
     // Notify user - wrap in try-catch
     try {
         if (updatedAssignment.student) {
-    const userNotification = await Notification.create({
-                user: updatedAssignment.student,
+    const userNotification = await createNotificationWithEmail({
+                userId: updatedAssignment.student,
                 message: `Your payment for "${updatedAssignment.title}" has been confirmed! Writer will start working on it.`,
         type: 'assignment',
-        link: '/my-assignments'
+        link: '/my-assignments',
+        req: req
     });
             const studentIdForSocket = safeIdToString(updatedAssignment.student);
             if (studentIdForSocket) {
