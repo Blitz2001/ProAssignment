@@ -35,7 +35,7 @@ const loginUser = asyncHandler(async (req, res) => {
   // Check password
   const trimmedPassword = password.trim();
   console.log(`   Input password length: ${trimmedPassword.length}`);
-  
+
   const isPasswordValid = await user.matchPassword(trimmedPassword);
   console.log(`   Password match result: ${isPasswordValid ? '✅ VALID' : '❌ INVALID'}`);
 
@@ -61,7 +61,7 @@ const loginUser = asyncHandler(async (req, res) => {
   } else {
     console.log(`❌ Login failed: Password mismatch for email: ${normalizedEmail}`);
     console.log(`   Trying direct bcrypt comparison as fallback...`);
-    
+
     // Fallback: Try direct bcrypt comparison
     if (user.password && user.password.startsWith('$2')) {
       try {
@@ -89,7 +89,7 @@ const loginUser = asyncHandler(async (req, res) => {
         console.error('   Direct bcrypt compare error:', bcryptError);
       }
     }
-    
+
     res.status(401);
     throw new Error('Invalid email or password');
   }
@@ -138,7 +138,7 @@ const registerUser = asyncHandler(async (req, res) => {
   console.log(`🔐 Registering user: ${normalizedEmail}`);
   console.log(`   Password length: ${trimmedPassword.length}`);
   console.log(`   MongoDB connection state: ${mongoose.connection.readyState === 1 ? 'Connected ✓' : 'Not Connected ✗'}`);
-  
+
   // Create user - password will be hashed by pre-save hook
   let user;
   try {
@@ -248,18 +248,17 @@ const registerUser = asyncHandler(async (req, res) => {
     try {
       const admin = await User.findOne({ role: 'admin' });
       if (admin) {
-        const adminChat = await Conversation.findOneAndUpdate(
-          { 
-            participants: { $all: [savedUser._id, admin._id], $size: 2 },
-            assignment: { $exists: false }
-          },
-          { 
-            $setOnInsert: { 
-              participants: [savedUser._id, admin._id],
-            } 
-          },
-          { upsert: true, new: true }
-        );
+        // Fix: Use findOne then create to avoid "matched twice" error with upsert
+        let adminChat = await Conversation.findOne({
+          participants: { $all: [savedUser._id, admin._id], $size: 2 },
+          assignment: { $exists: false }
+        });
+
+        if (!adminChat) {
+          adminChat = await Conversation.create({
+            participants: [savedUser._id, admin._id]
+          });
+        }
         console.log(`✅ Admin chat created for new ${savedUser.role}: ${adminChat._id}`);
       } else {
         console.warn(`⚠️ No admin user found - admin chat not created for ${savedUser.email}`);
@@ -326,7 +325,7 @@ const updateUserProfile = asyncHandler(async (req, res) => {
         throw new Error('Invalid status value');
       }
     }
-    
+
     const updatedUser = await user.save();
 
     const responsePayload = {
