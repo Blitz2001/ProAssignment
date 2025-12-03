@@ -47,20 +47,20 @@ const emitSocketEvent = (req, recipientId, event, data) => {
         if (!req || !recipientId || !event) {
             return; // Silently return if required params are missing
         }
-        
+
         if (!req.activeUsers || !req.io) {
             console.warn('Socket not available for event emission');
             return;
         }
-        
+
         const recipientIdStr = safeIdToString(recipientId);
         if (!recipientIdStr) {
             console.warn('Invalid recipient ID for socket event');
             return;
         }
-        
+
         const recipientSocketId = req.activeUsers.get(recipientIdStr);
-        
+
         if (recipientSocketId) {
             req.io.to(recipientSocketId).emit(event, data);
         }
@@ -98,19 +98,19 @@ const createOrUpdatePaysheet = async (assignment, req = null) => {
         // Find existing paysheet for this writer and period (writer type only)
         // Look for unpaid paysheets first (Pending/Due), but if none exist, create new one
         // This ensures all assignments show up in paysheets regardless of completion status
-        let existingPaysheet = await Paysheet.findOne({ 
-            writer: writerId, 
-            period: period, 
+        let existingPaysheet = await Paysheet.findOne({
+            writer: writerId,
+            period: period,
             type: 'writer', // Only find writer paysheets
-            status: { $in: ['Pending', 'Due'] } 
+            status: { $in: ['Pending', 'Due'] }
         });
-        
+
         // If no unpaid paysheet exists, check for any paysheet in this period (even if Paid)
         // If a Paid paysheet exists, we'll create a new one for new assignments
         if (!existingPaysheet) {
-            const anyPaysheet = await Paysheet.findOne({ 
-                writer: writerId, 
-                period: period, 
+            const anyPaysheet = await Paysheet.findOne({
+                writer: writerId,
+                period: period,
                 type: 'writer'
             });
             // If there's a Paid paysheet, we don't update it (it's already been paid)
@@ -120,17 +120,17 @@ const createOrUpdatePaysheet = async (assignment, req = null) => {
         if (existingPaysheet) {
             // Update existing paysheet
             existingPaysheet.amount = (existingPaysheet.amount || 0) + writerPrice;
-            
+
             // Ensure assignments array exists and add assignment if not already present
             if (!Array.isArray(existingPaysheet.assignments)) {
                 existingPaysheet.assignments = [];
             }
-            
+
             const assignmentId = assignment._id.toString();
             if (!existingPaysheet.assignments.some(aid => aid.toString() === assignmentId)) {
                 existingPaysheet.assignments.push(assignment._id);
             }
-            
+
             await existingPaysheet.save();
 
             // Update assignment to link to paysheet
@@ -199,33 +199,33 @@ const createOrUpdateAdminPaysheet = async (assignment, req = null) => {
         }
 
         const adminId = admin._id.toString();
-        
+
         // Use assignment completion date if available, otherwise use current date
         const completionDate = assignment.completedAt ? new Date(assignment.completedAt) : new Date();
         const period = getPeriodString(completionDate);
 
         // Find existing admin paysheet for this period with Pending or Due status
-        const existingAdminPaysheet = await Paysheet.findOne({ 
-            writer: adminId, 
-            period: period, 
+        const existingAdminPaysheet = await Paysheet.findOne({
+            writer: adminId,
+            period: period,
             type: 'admin', // Only find admin paysheets
-            status: { $in: ['Pending', 'Due'] } 
+            status: { $in: ['Pending', 'Due'] }
         });
 
         if (existingAdminPaysheet) {
             // Update existing admin paysheet
             existingAdminPaysheet.amount = (existingAdminPaysheet.amount || 0) + adminProfit;
-            
+
             // Ensure assignments array exists and add assignment if not already present
             if (!Array.isArray(existingAdminPaysheet.assignments)) {
                 existingAdminPaysheet.assignments = [];
             }
-            
+
             const assignmentId = assignment._id.toString();
             if (!existingAdminPaysheet.assignments.some(aid => aid.toString() === assignmentId)) {
                 existingAdminPaysheet.assignments.push(assignment._id);
             }
-            
+
             await existingAdminPaysheet.save();
 
             // Emit refresh event to all admins if req is provided
@@ -287,11 +287,11 @@ const calculateAssignmentUnread = async (assignmentId, userId) => {
     try {
         const conversation = await Conversation.findOne({ assignment: assignmentId }).select('lastViewedBy');
         if (!conversation) return 0;
-        
+
         const userIdStr = userId.toString();
         const lastViewedValue = conversation.lastViewedBy?.[userIdStr];
         let lastViewedAt = null;
-        
+
         if (lastViewedValue) {
             // Handle both ISO string and Date object
             lastViewedAt = lastViewedValue instanceof Date ? lastViewedValue : new Date(lastViewedValue);
@@ -300,7 +300,7 @@ const calculateAssignmentUnread = async (assignmentId, userId) => {
                 lastViewedAt = null;
             }
         }
-        
+
         if (!lastViewedAt) {
             // Never viewed - count all messages not from user
             return await Message.countDocuments({
@@ -308,7 +308,7 @@ const calculateAssignmentUnread = async (assignmentId, userId) => {
                 sender: { $ne: userId }
             });
         }
-        
+
         // Count messages after last viewed
         return await Message.countDocuments({
             conversation: conversation._id,
@@ -337,9 +337,9 @@ const formatAssignment = (a, userRole = 'user', unreadCount = 0) => {
             name: f?.name || 'Unknown',
             url: `/api/download/original/${a._id}/${encodeURIComponent(f?.name || 'file')}`
         })) : [],
-        completedFiles: (a.completedFiles && Array.isArray(a.completedFiles) && a.completedFiles.length > 0) ? a.completedFiles.map(f => ({ 
+        completedFiles: (a.completedFiles && Array.isArray(a.completedFiles) && a.completedFiles.length > 0) ? a.completedFiles.map(f => ({
             name: f?.name || 'Unknown',
-            url: `/api/download/completed/${a._id}/${encodeURIComponent(f?.name || 'file')}` 
+            url: `/api/download/completed/${a._id}/${encodeURIComponent(f?.name || 'file')}`
         })) : [],
         turnitinRequested: a.turnitinRequested,
         reportStatus: a.reportStatus || null,
@@ -395,7 +395,7 @@ const emitAssignmentUpdate = async (req, assignment, eventType = 'assignmentUpda
         console.error('Error populating assignment:', error);
         // Continue even if population fails
     }
-    
+
     // Emit to student (client) with user role
     if (assignment.student) {
         try {
@@ -406,7 +406,7 @@ const emitAssignmentUpdate = async (req, assignment, eventType = 'assignmentUpda
             console.error('Error emitting to student:', error);
         }
     }
-    
+
     // Emit to writer with writer role
     if (assignment.writer) {
         try {
@@ -417,7 +417,7 @@ const emitAssignmentUpdate = async (req, assignment, eventType = 'assignmentUpda
             console.error('Error emitting to writer:', error);
         }
     }
-    
+
     // Emit to all admins with admin role
     try {
         const admins = await User.find({ role: 'admin' });
@@ -443,12 +443,12 @@ const emitAssignmentUpdate = async (req, assignment, eventType = 'assignmentUpda
 // @access  Private (User)
 const createSubmission = asyncHandler(async (req, res) => {
     const { title, subject, deadline, description } = req.body;
-    
+
     if (!req.files || req.files.length === 0) {
         res.status(400);
         throw new Error('Please upload at least one file.');
     }
-    
+
     // Safely map files, ensuring all properties exist
     const attachments = Array.isArray(req.files) && req.files.length > 0
         ? req.files.map(f => ({
@@ -456,13 +456,13 @@ const createSubmission = asyncHandler(async (req, res) => {
             path: f?.path || f?.destination || ''
         })).filter(f => f.name && f.path) // Filter out any invalid entries
         : [];
-    
+
     // Validate that we have at least one file
     if (!attachments || attachments.length === 0) {
         res.status(400);
         throw new Error('Failed to process uploaded files. Please try again.');
     }
-    
+
     const assignment = new Assignment({
         title,
         subject,
@@ -474,10 +474,10 @@ const createSubmission = asyncHandler(async (req, res) => {
     });
 
     const createdAssignment = await assignment.save();
-    
+
     // Safely populate - wrap in try-catch
     try {
-    await createdAssignment.populate('student', 'name');
+        await createdAssignment.populate('student', 'name');
     } catch (populateError) {
         console.error('Error populating assignment:', populateError);
         // Continue even if population fails
@@ -487,19 +487,19 @@ const createSubmission = asyncHandler(async (req, res) => {
     let admins = [];
     try {
         admins = await User.find({ role: 'admin' });
-    for (const admin of admins) {
+        for (const admin of admins) {
             try {
-        const notification = await createNotificationWithEmail({
-            userId: admin._id,
-            message: `New submission "${title}" received from ${req.user.name}. Please review and set price.`,
-            type: 'assignment',
-            link: `/new-submissions`,
-            req: req
-        });
-        const adminIdForSocket = safeIdToString(admin._id);
-        if (adminIdForSocket) {
-            emitSocketEvent(req, adminIdForSocket, 'newNotification', safeNotificationToJSON(notification));
-        }
+                const notification = await createNotificationWithEmail({
+                    userId: admin._id,
+                    message: `New submission "${title}" received from ${req.user.name}. Please review and set price.`,
+                    type: 'assignment',
+                    link: `/new-submissions`,
+                    req: req
+                });
+                const adminIdForSocket = safeIdToString(admin._id);
+                if (adminIdForSocket) {
+                    emitSocketEvent(req, adminIdForSocket, 'newNotification', safeNotificationToJSON(notification));
+                }
             } catch (error) {
                 console.error(`Error creating notification for admin ${admin._id}:`, error);
                 // Continue with other admins even if one fails
@@ -509,24 +509,37 @@ const createSubmission = asyncHandler(async (req, res) => {
         console.error('Error fetching admins or creating notifications:', error);
     }
 
+    // Notify the user (student) - Confirmation email
+    try {
+        await createNotificationWithEmail({
+            userId: req.user._id,
+            message: `Your assignment "${title}" has been successfully submitted. We are reviewing it and will provide a quote soon.`,
+            type: 'assignment',
+            link: `/my-assignments`,
+            req: req
+        });
+    } catch (error) {
+        console.error('Error creating confirmation notification for user:', error);
+    }
+
     // Emit assignment update events - wrap in try-catch
     try {
-    await emitAssignmentUpdate(req, createdAssignment, 'assignmentCreated');
+        await emitAssignmentUpdate(req, createdAssignment, 'assignmentCreated');
     } catch (error) {
         console.error('Error emitting assignment update:', error);
     }
-    
+
     // Emit refresh events - wrap in try-catch
     try {
-    emitSocketEvent(req, req.user._id, 'refreshAssignments', null);
+        emitSocketEvent(req, req.user._id, 'refreshAssignments', null);
         if (admins && Array.isArray(admins)) {
             admins.forEach(admin => {
                 try {
-        emitSocketEvent(req, admin._id, 'refreshNewSubmissions', null);
+                    emitSocketEvent(req, admin._id, 'refreshNewSubmissions', null);
                 } catch (error) {
                     console.error(`Error emitting refresh event for admin ${admin._id}:`, error);
                 }
-    });
+            });
         }
     } catch (error) {
         console.error('Error emitting refresh events:', error);
@@ -534,7 +547,7 @@ const createSubmission = asyncHandler(async (req, res) => {
 
     // Always send response even if some operations failed
     try {
-    res.status(201).json(formatAssignment(createdAssignment, req.user.role));
+        res.status(201).json(formatAssignment(createdAssignment, req.user.role));
     } catch (error) {
         console.error('Error formatting assignment for response:', error);
         // Send a basic response even if formatting fails
@@ -557,7 +570,7 @@ const createSubmission = asyncHandler(async (req, res) => {
 // @access  Private/Admin
 const getNewSubmissions = asyncHandler(async (req, res) => {
     // Get assignments that need admin action: New, Price Set, Price Accepted, Payment Proof Submitted, or Paid (not yet assigned)
-    const assignments = await Assignment.find({ 
+    const assignments = await Assignment.find({
         status: { $in: ['New', 'Price Set', 'Price Accepted', 'Payment Proof Submitted', 'Paid'] },
         $or: [
             { writer: { $exists: false } },
@@ -575,7 +588,7 @@ const getNewSubmissions = asyncHandler(async (req, res) => {
 // @access  Private/Admin
 const assignWriter = asyncHandler(async (req, res) => {
     const { writerId, writerPrice, clientPrice } = req.body;
-    
+
     // Validate input
     if (!writerId) {
         res.status(400);
@@ -619,7 +632,7 @@ const assignWriter = asyncHandler(async (req, res) => {
 
     assignment.writer = writerId;
     assignment.writerPrice = Number(writerPrice);
-    
+
     // If admin provides clientPrice, update it (allows manual price setting)
     if (clientPrice && clientPrice > 0) {
         assignment.clientPrice = Number(clientPrice);
@@ -628,16 +641,16 @@ const assignWriter = asyncHandler(async (req, res) => {
             assignment.clientAcceptedPrice = true;
         }
     }
-    
+
     assignment.status = 'In Progress';
     const updatedAssignment = await assignment.save();
-    
+
     // Create paysheet with "Due" status when writer is assigned - wrap in try-catch
     try {
         // Ensure we have writer and writerPrice
         const writerIdForPaysheet = safeIdToString(updatedAssignment.writer || writerId);
         const writerPriceValue = Number(updatedAssignment.writerPrice || writerPrice);
-        
+
         if (!writerIdForPaysheet) {
             console.warn('Cannot create paysheet: No writer ID found');
         } else if (!writerPriceValue || writerPriceValue <= 0) {
@@ -646,7 +659,7 @@ const assignWriter = asyncHandler(async (req, res) => {
             // Use current date for period (assignment is just assigned)
             const period = getPeriodString(new Date());
             console.log(`Creating/updating paysheet for writer ${writerIdForPaysheet}, period ${period}, amount $${writerPriceValue}`);
-            
+
             // Find existing unpaid paysheet for this writer and period
             // We want to update existing unpaid paysheets (Pending/Due)
             // If a paysheet is Paid, we'll create a new one for new assignments
@@ -656,12 +669,12 @@ const assignWriter = asyncHandler(async (req, res) => {
                 type: 'writer', // Only find writer paysheets
                 status: { $in: ['Due', 'Pending'] }
             }).lean(); // Use lean for better performance
-            
+
             // If no existing unpaid paysheet found, log it
             if (!existingPaysheet) {
                 console.log(`No existing unpaid paysheet found for writer ${writerIdForPaysheet}, period ${period} - will create new one`);
             }
-            
+
             if (existingPaysheet) {
                 console.log(`Found existing paysheet ${existingPaysheet._id}, updating...`);
                 // Need to fetch the full document (not lean) to update it
@@ -671,37 +684,37 @@ const assignWriter = asyncHandler(async (req, res) => {
                 } else {
                     // Update existing paysheet
                     paysheetToUpdate.amount = (paysheetToUpdate.amount || 0) + writerPriceValue;
-                
+
                     // Ensure assignments array exists and add assignment if not already present
                     if (!Array.isArray(paysheetToUpdate.assignments)) {
                         paysheetToUpdate.assignments = [];
                     }
-                    
+
                     const assignmentId = updatedAssignment._id.toString();
-                    const assignmentExists = paysheetToUpdate.assignments.some(aid => 
+                    const assignmentExists = paysheetToUpdate.assignments.some(aid =>
                         safeIdToString(aid) === assignmentId
                     );
-                    
+
                     if (!assignmentExists) {
                         paysheetToUpdate.assignments.push(updatedAssignment._id);
                     }
-                    
+
                     // Ensure status is "Due" (new assignment)
                     if (paysheetToUpdate.status !== 'Due') {
                         paysheetToUpdate.status = 'Due';
                     }
-                    
+
                     await paysheetToUpdate.save();
                     console.log(`✅ Updated paysheet ${paysheetToUpdate._id}, new amount: $${paysheetToUpdate.amount}, status: ${paysheetToUpdate.status}`);
-                    
+
                     // Update assignment to link to paysheet
                     await Assignment.findByIdAndUpdate(updatedAssignment._id, { paysheet: paysheetToUpdate._id });
                     console.log(`✅ Linked assignment ${updatedAssignment._id} to paysheet ${paysheetToUpdate._id}`);
-                
+
                     // Emit refresh events for writer and all admins
                     console.log(`Emitting refreshPaysheets to writer: ${writerIdForPaysheet}`);
                     emitSocketEvent(req, writerIdForPaysheet, 'refreshPaysheets', null);
-                    
+
                     try {
                         const admins = await User.find({ role: 'admin' }).select('_id').lean();
                         if (admins && Array.isArray(admins)) {
@@ -729,9 +742,9 @@ const assignWriter = asyncHandler(async (req, res) => {
                     status: 'Due',
                     assignments: [updatedAssignment._id]
                 });
-                
+
                 console.log(`✅ Created new paysheet ${newPaysheet._id} with amount $${writerPriceValue}, status: ${newPaysheet.status}`);
-                
+
                 // Verify paysheet was actually saved
                 const verifyPaysheet = await Paysheet.findById(newPaysheet._id);
                 if (verifyPaysheet) {
@@ -739,15 +752,15 @@ const assignWriter = asyncHandler(async (req, res) => {
                 } else {
                     console.error(`❌ ERROR: Paysheet ${newPaysheet._id} was not saved to database!`);
                 }
-                
+
                 // Update assignment to link to paysheet
                 await Assignment.findByIdAndUpdate(updatedAssignment._id, { paysheet: newPaysheet._id });
                 console.log(`✅ Linked assignment ${updatedAssignment._id} to paysheet ${newPaysheet._id}`);
-                
+
                 // Emit refresh events for writer and all admins
                 console.log(`Emitting refreshPaysheets to writer: ${writerIdForPaysheet}`);
                 emitSocketEvent(req, writerIdForPaysheet, 'refreshPaysheets', null);
-                
+
                 try {
                     const admins = await User.find({ role: 'admin' }).select('_id').lean();
                     if (admins && Array.isArray(admins)) {
@@ -776,7 +789,7 @@ const assignWriter = asyncHandler(async (req, res) => {
         // Ensure we have both clientPrice and writerPrice to calculate profit
         const clientPriceValue = Number(updatedAssignment.clientPrice || assignment.clientPrice || 0);
         const writerPriceValue = Number(updatedAssignment.writerPrice || writerPrice || 0);
-        
+
         if (clientPriceValue > 0 && writerPriceValue > 0) {
             console.log(`Creating/updating admin paysheet for assignment ${updatedAssignment._id}, clientPrice: $${clientPriceValue}, writerPrice: $${writerPriceValue}`);
             await createOrUpdateAdminPaysheet(updatedAssignment, req);
@@ -793,10 +806,10 @@ const assignWriter = asyncHandler(async (req, res) => {
     try {
         const assignmentChat = await Conversation.findOneAndUpdate(
             { assignment: assignment._id },
-            { 
-                $setOnInsert: { 
-                    participants: [assignment.student, writerId], 
-                    assignment: assignment._id 
+            {
+                $setOnInsert: {
+                    participants: [assignment.student, writerId],
+                    assignment: assignment._id
                 }
             },
             { upsert: true, new: true }
@@ -822,7 +835,7 @@ const assignWriter = asyncHandler(async (req, res) => {
     } catch (error) {
         console.error('Error notifying writer:', error);
     }
-    
+
     // Notify student that writer has been assigned - wrap in try-catch
     try {
         if (studentId && assignment.student) {
@@ -839,7 +852,7 @@ const assignWriter = asyncHandler(async (req, res) => {
     } catch (error) {
         console.error('Error notifying student:', error);
     }
-    
+
     // Safely populate - wrap in try-catch
     try {
         await updatedAssignment.populate('student', 'name');
@@ -862,22 +875,22 @@ const assignWriter = asyncHandler(async (req, res) => {
             console.error('Error populating writer:', e);
         }
     }
-    
+
     // Emit assignment update events - wrap in try-catch
     try {
-            await emitAssignmentUpdate(req, updatedAssignment, 'assignmentUpdated');
+        await emitAssignmentUpdate(req, updatedAssignment, 'assignmentUpdated');
     } catch (error) {
         console.error('Error emitting assignment update:', error);
         // Don't throw - continue with response
     }
-    
+
     // Emit refresh events - wrap in try-catch
     try {
         if (studentId) {
             emitSocketEvent(req, studentId, 'refreshAssignments', null);
         }
         emitSocketEvent(req, writerIdStr, 'refreshAssignments', null);
-        
+
         // Safely fetch and emit to admins
         try {
             const admins = await User.find({ role: 'admin' }).select('_id').lean();
@@ -901,7 +914,7 @@ const assignWriter = asyncHandler(async (req, res) => {
         console.error('Error emitting refresh events:', error);
         // Don't throw - continue with response
     }
-    
+
     // Always send response even if some operations failed
     try {
         // Ensure assignment is properly formatted before sending
@@ -942,7 +955,7 @@ const getAssignments = asyncHandler(async (req, res) => {
     if (status && status !== 'All') {
         query.status = status;
     }
-     if (writerId) {
+    if (writerId) {
         query.writer = writerId;
     }
 
@@ -950,7 +963,7 @@ const getAssignments = asyncHandler(async (req, res) => {
         .populate('student', 'name')
         .populate('writer', 'name')
         .sort({ createdAt: 'desc' });
-    
+
     // Calculate unread counts
     const assignmentsWithUnread = await Promise.all(
         assignments.map(async (a) => {
@@ -958,7 +971,7 @@ const getAssignments = asyncHandler(async (req, res) => {
             return formatAssignment(a, req.user.role, unreadCount);
         })
     );
-    
+
     res.json(assignmentsWithUnread);
 });
 
@@ -982,7 +995,7 @@ const getMyAssignments = asyncHandler(async (req, res) => {
         .populate('student', 'name')
         .populate('writer', 'name')
         .sort({ deadline: 'desc' });
-    
+
     // Calculate unread counts
     const assignmentsWithUnread = await Promise.all(
         assignments.map(async (a) => {
@@ -990,7 +1003,7 @@ const getMyAssignments = asyncHandler(async (req, res) => {
             return formatAssignment(a, req.user.role, unreadCount);
         })
     );
-    
+
     res.json(assignmentsWithUnread);
 });
 
@@ -1004,7 +1017,7 @@ const uploadCompletedWork = asyncHandler(async (req, res) => {
         res.status(404);
         throw new Error('Assignment not found');
     }
-    
+
     const writerId = safeIdToString(assignment.writer);
     const userId = safeIdToString(req.user._id);
     if (!writerId || writerId !== userId) {
@@ -1035,15 +1048,15 @@ const uploadCompletedWork = asyncHandler(async (req, res) => {
     assignment.status = 'Completed';
     assignment.progress = 100;
     assignment.completedAt = new Date(); // Set completion timestamp
-    
+
     // Safely map files, ensuring all properties exist
-    assignment.completedFiles = Array.isArray(req.files) && req.files.length > 0 
+    assignment.completedFiles = Array.isArray(req.files) && req.files.length > 0
         ? req.files.map(f => ({
             name: f?.originalname || f?.filename || 'Unknown',
             path: f?.path || f?.destination || ''
         })).filter(f => f.name && f.path) // Filter out any invalid entries
         : [];
-    
+
     // Validate that we have at least one file
     if (!assignment.completedFiles || assignment.completedFiles.length === 0) {
         console.error('Upload error: Failed to process files');
@@ -1051,15 +1064,15 @@ const uploadCompletedWork = asyncHandler(async (req, res) => {
         res.status(400);
         throw new Error('Failed to process uploaded files. Please check file format and try again.');
     }
-    
+
     console.log(`Upload: Successfully processed ${assignment.completedFiles.length} file(s)`);
-    
+
     const updatedAssignment = await assignment.save();
-    
+
     // Safely populate - wrap in try-catch
     try {
-    await updatedAssignment.populate('student', 'name');
-    await updatedAssignment.populate('writer', 'name');
+        await updatedAssignment.populate('student', 'name');
+        await updatedAssignment.populate('writer', 'name');
     } catch (populateError) {
         console.error('Error populating assignment:', populateError);
         // Continue even if population fails
@@ -1085,17 +1098,17 @@ const uploadCompletedWork = asyncHandler(async (req, res) => {
 
     // Try to create notifications, but don't fail if they can't be created
     try {
-    const studentNotification = await createNotificationWithEmail({
-        userId: assignment.student,
-        message: `Your assignment "${assignment.title}" has been completed and uploaded by the writer. Awaiting admin approval.`,
-        type: 'assignment',
-        link: '/my-assignments',
-        req: req
-    });
-    const studentIdForSocket = safeIdToString(assignment.student);
-    if (studentIdForSocket) {
-        emitSocketEvent(req, studentIdForSocket, 'newNotification', safeNotificationToJSON(studentNotification));
-    }
+        const studentNotification = await createNotificationWithEmail({
+            userId: assignment.student,
+            message: `Your assignment "${assignment.title}" has been completed and uploaded by the writer. Awaiting admin approval.`,
+            type: 'assignment',
+            link: '/my-assignments',
+            req: req
+        });
+        const studentIdForSocket = safeIdToString(assignment.student);
+        if (studentIdForSocket) {
+            emitSocketEvent(req, studentIdForSocket, 'newNotification', safeNotificationToJSON(studentNotification));
+        }
     } catch (error) {
         console.error('Error creating student notification:', error);
     }
@@ -1104,20 +1117,20 @@ const uploadCompletedWork = asyncHandler(async (req, res) => {
     let admins = [];
     try {
         admins = await User.find({ role: 'admin' });
-    for (const admin of admins) {
+        for (const admin of admins) {
             try {
-        const adminNotification = await createNotificationWithEmail({
-            userId: admin._id,
-            message: `Writer ${req.user.name} has uploaded completed work for "${assignment.title}". Payment is pending. Please review and approve.`,
-            type: 'assignment',
-            link: '/assignments',
-            req: req
-        });
-        const adminIdForSocket = safeIdToString(admin._id);
-        if (adminIdForSocket) {
-            emitSocketEvent(req, adminIdForSocket, 'newNotification', safeNotificationToJSON(adminNotification));
-            emitSocketEvent(req, adminIdForSocket, 'refreshPaysheets', null);
-        }
+                const adminNotification = await createNotificationWithEmail({
+                    userId: admin._id,
+                    message: `Writer ${req.user.name} has uploaded completed work for "${assignment.title}". Payment is pending. Please review and approve.`,
+                    type: 'assignment',
+                    link: '/assignments',
+                    req: req
+                });
+                const adminIdForSocket = safeIdToString(admin._id);
+                if (adminIdForSocket) {
+                    emitSocketEvent(req, adminIdForSocket, 'newNotification', safeNotificationToJSON(adminNotification));
+                    emitSocketEvent(req, adminIdForSocket, 'refreshPaysheets', null);
+                }
             } catch (error) {
                 console.error(`Error creating notification for admin ${admin._id}:`, error);
                 // Continue with other admins even if one fails
@@ -1126,31 +1139,31 @@ const uploadCompletedWork = asyncHandler(async (req, res) => {
     } catch (error) {
         console.error('Error fetching admins or creating notifications:', error);
     }
-    
+
     // Emit assignment update events - wrap in try-catch
     try {
         await emitAssignmentUpdate(req, updatedAssignment, 'assignmentUpdated');
     } catch (error) {
         console.error('Error emitting assignment update:', error);
     }
-    
+
     // Emit refresh events - wrap in try-catch
     try {
-    const studentIdForRefresh = safeIdToString(assignment.student);
-    if (studentIdForRefresh) {
-        emitSocketEvent(req, studentIdForRefresh, 'refreshAssignments', null);
-    }
-    const userIdForRefresh = safeIdToString(req.user._id);
-    if (userIdForRefresh) {
-        emitSocketEvent(req, userIdForRefresh, 'refreshAssignments', null);
-    }
-        if (admins && Array.isArray(admins)) {
-    admins.forEach(admin => {
-                try {
-        const adminIdForRefresh = safeIdToString(admin._id);
-        if (adminIdForRefresh) {
-            emitSocketEvent(req, adminIdForRefresh, 'refreshAssignments', null);
+        const studentIdForRefresh = safeIdToString(assignment.student);
+        if (studentIdForRefresh) {
+            emitSocketEvent(req, studentIdForRefresh, 'refreshAssignments', null);
         }
+        const userIdForRefresh = safeIdToString(req.user._id);
+        if (userIdForRefresh) {
+            emitSocketEvent(req, userIdForRefresh, 'refreshAssignments', null);
+        }
+        if (admins && Array.isArray(admins)) {
+            admins.forEach(admin => {
+                try {
+                    const adminIdForRefresh = safeIdToString(admin._id);
+                    if (adminIdForRefresh) {
+                        emitSocketEvent(req, adminIdForRefresh, 'refreshAssignments', null);
+                    }
                 } catch (error) {
                     console.error(`Error emitting refresh event for admin ${admin._id}:`, error);
                 }
@@ -1159,7 +1172,7 @@ const uploadCompletedWork = asyncHandler(async (req, res) => {
     } catch (error) {
         console.error('Error emitting refresh events:', error);
     }
-    
+
     // Always send response even if some operations failed
     // Wrap in try-catch to prevent crashes
     try {
@@ -1198,7 +1211,7 @@ const requestTurnitinReport = asyncHandler(async (req, res) => {
         res.status(404);
         throw new Error('Assignment not found');
     }
-    
+
     const studentId = safeIdToString(assignment.student);
     const userId = safeIdToString(req.user._id);
     if (!studentId || studentId !== userId) {
@@ -1211,27 +1224,27 @@ const requestTurnitinReport = asyncHandler(async (req, res) => {
         throw new Error('No writer assigned to this assignment yet.');
     }
 
-        assignment.turnitinRequested = true;
+    assignment.turnitinRequested = true;
     assignment.reportStatus = 'requested';
     const updatedAssignment = await assignment.save();
-    
+
     // Notify all admins - wrap in try-catch to prevent crashes
     let admins = [];
     try {
         admins = await User.find({ role: 'admin' });
         for (const admin of admins) {
             try {
-            const notification = await createNotificationWithEmail({
-                userId: admin._id,
-                message: `Client ${req.user.name} requested a Turnitin report for "${updatedAssignment.title}". Please send request to writer.`,
-                type: 'report',
-                link: '/assignments',
-                req: req
-            });
-            const adminIdForSocket = safeIdToString(admin._id);
-        if (adminIdForSocket) {
-            emitSocketEvent(req, adminIdForSocket, 'newNotification', safeNotificationToJSON(notification));
-        }
+                const notification = await createNotificationWithEmail({
+                    userId: admin._id,
+                    message: `Client ${req.user.name} requested a Turnitin report for "${updatedAssignment.title}". Please send request to writer.`,
+                    type: 'report',
+                    link: '/assignments',
+                    req: req
+                });
+                const adminIdForSocket = safeIdToString(admin._id);
+                if (adminIdForSocket) {
+                    emitSocketEvent(req, adminIdForSocket, 'newNotification', safeNotificationToJSON(notification));
+                }
             } catch (error) {
                 console.error(`Error creating notification for admin ${admin._id}:`, error);
                 // Continue with other admins even if one fails
@@ -1240,10 +1253,10 @@ const requestTurnitinReport = asyncHandler(async (req, res) => {
     } catch (error) {
         console.error('Error fetching admins or creating notifications:', error);
     }
-    
+
     // Always send response even if some operations failed
     try {
-            res.json(formatAssignment(updatedAssignment, req.user.role));
+        res.json(formatAssignment(updatedAssignment, req.user.role));
     } catch (error) {
         console.error('Error formatting assignment for response:', error);
         // Send a basic response even if formatting fails
@@ -1280,7 +1293,7 @@ const sendReportToWriter = asyncHandler(async (req, res) => {
 
     assignment.reportStatus = 'sent_to_writer';
     const updatedAssignment = await assignment.save();
-    
+
     // Safely populate - wrap in try-catch
     try {
         await updatedAssignment.populate('writer', 'name');
@@ -1382,15 +1395,15 @@ const uploadReport = asyncHandler(async (req, res) => {
     }
 
     assignment.reportStatus = 'writer_submitted';
-    
+
     // Safely handle file properties
     assignment.reportFile = {
         name: req.file?.originalname || req.file?.filename || 'turnitin-report.pdf',
         path: req.file?.path || req.file?.destination || '',
     };
-    
+
     const updatedAssignment = await assignment.save();
-    
+
     // Safely populate - wrap in try-catch
     try {
         await updatedAssignment.populate('writer', 'name');
@@ -1497,7 +1510,7 @@ const sendReportToUser = asyncHandler(async (req, res) => {
 
     assignment.reportStatus = 'sent_to_user';
     const updatedAssignment = await assignment.save();
-    
+
     // Update paysheet status to "Pending" when Turnitin report is sent to client
     try {
         if (updatedAssignment.paysheet) {
@@ -1505,7 +1518,7 @@ const sendReportToUser = asyncHandler(async (req, res) => {
             if (paysheet && paysheet.status === 'Due') {
                 paysheet.status = 'Pending';
                 await paysheet.save();
-                
+
                 // Emit refresh events
                 const writerId = safeIdToString(paysheet.writer);
                 if (writerId) {
@@ -1530,7 +1543,7 @@ const sendReportToUser = asyncHandler(async (req, res) => {
         console.error('Error updating paysheet status to Pending:', error);
         // Continue even if paysheet update fails
     }
-    
+
     // Safely populate - wrap in try-catch
     try {
         await updatedAssignment.populate('writer', 'name');
@@ -1625,11 +1638,11 @@ const approveWriterWork = asyncHandler(async (req, res) => {
     assignment.adminApproved = true;
     assignment.status = 'Admin Approved';
     const updatedAssignment = await assignment.save();
-    
+
     // Safely populate - wrap in try-catch
     try {
-    await updatedAssignment.populate('student', 'name');
-    await updatedAssignment.populate('writer', 'name');
+        await updatedAssignment.populate('student', 'name');
+        await updatedAssignment.populate('writer', 'name');
     } catch (populateError) {
         console.error('Error populating assignment:', populateError);
         // Continue even if population fails
@@ -1646,7 +1659,7 @@ const approveWriterWork = asyncHandler(async (req, res) => {
                     paysheet.status = 'Due';
                     await paysheet.save();
                 }
-                
+
                 // Emit refresh to all admins
                 try {
                     const admins = await User.find({ role: 'admin' }).select('_id').lean();
@@ -1664,7 +1677,7 @@ const approveWriterWork = asyncHandler(async (req, res) => {
                 }
             }
         }
-        
+
         // Also create/update admin paysheet (profit/commission)
         if (updatedAssignment.clientPrice > 0 && updatedAssignment.writerPrice > 0) {
             await createOrUpdateAdminPaysheet(updatedAssignment, req);
@@ -1677,13 +1690,13 @@ const approveWriterWork = asyncHandler(async (req, res) => {
     // Notify client that work is ready for download - wrap in try-catch
     try {
         if (updatedAssignment.student) {
-    const clientNotification = await createNotificationWithEmail({
+            const clientNotification = await createNotificationWithEmail({
                 userId: updatedAssignment.student,
                 message: `Your assignment "${updatedAssignment.title}" has been approved! You can now download the completed files and provide feedback.`,
-        type: 'assignment',
-        link: '/my-assignments',
-        req: req
-    });
+                type: 'assignment',
+                link: '/my-assignments',
+                req: req
+            });
             const studentIdForSocket = safeIdToString(updatedAssignment.student);
             if (studentIdForSocket) {
                 emitSocketEvent(req, studentIdForSocket, 'newNotification', safeNotificationToJSON(clientNotification));
@@ -1696,13 +1709,13 @@ const approveWriterWork = asyncHandler(async (req, res) => {
     // Notify writer - wrap in try-catch
     try {
         if (updatedAssignment.writer) {
-        const writerNotification = await createNotificationWithEmail({
+            const writerNotification = await createNotificationWithEmail({
                 userId: updatedAssignment.writer,
                 message: `Your work on "${updatedAssignment.title}" has been approved by admin!`,
-            type: 'assignment',
-            link: '/my-assignments',
-            req: req
-        });
+                type: 'assignment',
+                link: '/my-assignments',
+                req: req
+            });
             const writerIdForSocket = safeIdToString(updatedAssignment.writer);
             if (writerIdForSocket) {
                 emitSocketEvent(req, writerIdForSocket, 'newNotification', safeNotificationToJSON(writerNotification));
@@ -1718,7 +1731,7 @@ const approveWriterWork = asyncHandler(async (req, res) => {
     } catch (error) {
         console.error('Error emitting assignment update:', error);
     }
-    
+
     // Emit refresh events - wrap in try-catch
     try {
         if (updatedAssignment.student) {
@@ -1732,7 +1745,7 @@ const approveWriterWork = asyncHandler(async (req, res) => {
             if (writerIdForRefresh) {
                 emitSocketEvent(req, writerIdForRefresh, 'refreshAssignments', null);
             }
-    }
+        }
         // Safely fetch and emit to admins
         try {
             const admins = await User.find({ role: 'admin' }).select('_id').lean();
@@ -1801,7 +1814,7 @@ const submitAssignmentRating = asyncHandler(async (req, res) => {
 
         const studentId = safeIdToString(assignment.student);
         const userId = safeIdToString(req.user._id);
-        
+
         if (!studentId || studentId !== userId) {
             res.status(401);
             throw new Error('Not authorized to rate this assignment');
@@ -1821,7 +1834,7 @@ const submitAssignmentRating = asyncHandler(async (req, res) => {
         assignment.feedback = feedback || '';
         assignment.status = 'Paid'; // Mark as fully completed
         const updatedAssignment = await assignment.save();
-    
+
         // Safely populate - wrap in try-catch
         try {
             await updatedAssignment.populate('student', 'name');
@@ -1852,7 +1865,7 @@ const submitAssignmentRating = asyncHandler(async (req, res) => {
                         } else {
                             writer.rating = 0;
                         }
-                        
+
                         await writer.save();
                     }
                 }
@@ -1874,7 +1887,7 @@ const submitAssignmentRating = asyncHandler(async (req, res) => {
                         link: '/my-assignments',
                         req: req
                     });
-                    
+
                     emitSocketEvent(req, writerIdForNotification, 'newNotification', safeNotificationToJSON(writerNotification));
                 }
             }
@@ -1900,28 +1913,28 @@ const submitAssignmentRating = asyncHandler(async (req, res) => {
             console.error('Error updating paysheet:', error);
             // Continue even if paysheet update fails
         }
-    
+
         // Emit assignment update events - wrap in try-catch
         try {
-                await emitAssignmentUpdate(req, updatedAssignment, 'assignmentUpdated');
+            await emitAssignmentUpdate(req, updatedAssignment, 'assignmentUpdated');
         } catch (error) {
             console.error('Error emitting assignment update:', error);
             // Continue even if emit fails
         }
-    
+
         // Emit refresh events - wrap in try-catch
         try {
             const studentIdForRefresh = safeIdToString(updatedAssignment.student);
             if (studentIdForRefresh) {
                 emitSocketEvent(req, studentIdForRefresh, 'refreshAssignments', null);
             }
-            
+
             const writerIdForRefresh = safeIdToString(updatedAssignment.writer);
             if (writerIdForRefresh) {
                 emitSocketEvent(req, writerIdForRefresh, 'refreshAssignments', null);
                 emitSocketEvent(req, writerIdForRefresh, 'refreshPaysheets', null);
             }
-            
+
             // Notify all admins
             try {
                 const admins = await User.find({ role: 'admin' }).select('_id').lean();
@@ -1948,7 +1961,7 @@ const submitAssignmentRating = asyncHandler(async (req, res) => {
 
         // Always send response even if some operations failed
         try {
-                res.json(formatAssignment(updatedAssignment, req.user.role));
+            res.json(formatAssignment(updatedAssignment, req.user.role));
         } catch (error) {
             console.error('Error formatting assignment for response:', error);
             // Send a basic response even if formatting fails
@@ -1972,7 +1985,7 @@ const submitAssignmentRating = asyncHandler(async (req, res) => {
             } else {
                 res.status(500);
             }
-            res.json({ 
+            res.json({
                 message: error.message || 'Error submitting rating. Please try again.',
                 error: process.env.NODE_ENV === 'development' ? error.stack : undefined
             });
@@ -2004,10 +2017,10 @@ const setClientPrice = asyncHandler(async (req, res) => {
     assignment.clientPrice = Number(price);
     assignment.status = 'Price Set';
     const updatedAssignment = await assignment.save();
-    
+
     // Safely populate - wrap in try-catch
     try {
-    await updatedAssignment.populate('student', 'name');
+        await updatedAssignment.populate('student', 'name');
     } catch (populateError) {
         console.error('Error populating assignment:', populateError);
         // Continue even if population fails
@@ -2016,13 +2029,13 @@ const setClientPrice = asyncHandler(async (req, res) => {
     // Notify client - wrap in try-catch
     try {
         if (updatedAssignment.student) {
-    const userNotification = await createNotificationWithEmail({
+            const userNotification = await createNotificationWithEmail({
                 userId: updatedAssignment.student,
                 message: `Price set for your assignment "${updatedAssignment.title}": $${price}. Please accept or reject.`,
-        type: 'assignment',
-        link: '/my-assignments',
-        req: req
-    });
+                type: 'assignment',
+                link: '/my-assignments',
+                req: req
+            });
             const studentIdForSocket = safeIdToString(updatedAssignment.student);
             if (studentIdForSocket) {
                 emitSocketEvent(req, studentIdForSocket, 'newNotification', safeNotificationToJSON(userNotification));
@@ -2038,7 +2051,7 @@ const setClientPrice = asyncHandler(async (req, res) => {
     } catch (error) {
         console.error('Error emitting assignment update:', error);
     }
-    
+
     // Emit refresh events - wrap in try-catch
     try {
         if (updatedAssignment.student) {
@@ -2110,10 +2123,10 @@ const acceptPrice = asyncHandler(async (req, res) => {
     assignment.clientAcceptedPrice = true;
     assignment.status = 'Price Accepted';
     const updatedAssignment = await assignment.save();
-    
+
     // Safely populate - wrap in try-catch
     try {
-    await updatedAssignment.populate('student', 'name');
+        await updatedAssignment.populate('student', 'name');
     } catch (populateError) {
         console.error('Error populating assignment:', populateError);
         // Continue even if population fails
@@ -2123,19 +2136,19 @@ const acceptPrice = asyncHandler(async (req, res) => {
     let admins = [];
     try {
         admins = await User.find({ role: 'admin' });
-    for (const admin of admins) {
+        for (const admin of admins) {
             try {
-        const notification = await createNotificationWithEmail({
-            userId: admin._id,
+                const notification = await createNotificationWithEmail({
+                    userId: admin._id,
                     message: `Client ${req.user.name} accepted the price ($${updatedAssignment.clientPrice}) for "${updatedAssignment.title}". Awaiting payment.`,
-            type: 'assignment',
-            link: '/assignments',
-            req: req
-        });
-        const adminIdForSocket = safeIdToString(admin._id);
-        if (adminIdForSocket) {
-            emitSocketEvent(req, adminIdForSocket, 'newNotification', safeNotificationToJSON(notification));
-        }
+                    type: 'assignment',
+                    link: '/assignments',
+                    req: req
+                });
+                const adminIdForSocket = safeIdToString(admin._id);
+                if (adminIdForSocket) {
+                    emitSocketEvent(req, adminIdForSocket, 'newNotification', safeNotificationToJSON(notification));
+                }
             } catch (error) {
                 console.error(`Error creating notification for admin ${admin._id}:`, error);
                 // Continue with other admins even if one fails
@@ -2151,7 +2164,7 @@ const acceptPrice = asyncHandler(async (req, res) => {
     } catch (error) {
         console.error('Error emitting assignment update:', error);
     }
-    
+
     // Emit refresh events - wrap in try-catch
     try {
         if (updatedAssignment.student) {
@@ -2161,16 +2174,16 @@ const acceptPrice = asyncHandler(async (req, res) => {
             }
         }
         if (admins && Array.isArray(admins)) {
-    admins.forEach(admin => {
+            admins.forEach(admin => {
                 try {
-        const adminIdForRefresh = safeIdToString(admin._id);
-        if (adminIdForRefresh) {
-            emitSocketEvent(req, adminIdForRefresh, 'refreshAssignments', null);
-        }
+                    const adminIdForRefresh = safeIdToString(admin._id);
+                    if (adminIdForRefresh) {
+                        emitSocketEvent(req, adminIdForRefresh, 'refreshAssignments', null);
+                    }
                 } catch (error) {
                     console.error(`Error emitting refresh event for admin ${admin._id}:`, error);
                 }
-    });
+            });
         }
     } catch (error) {
         console.error('Error emitting refresh events:', error);
@@ -2217,10 +2230,10 @@ const rejectPrice = asyncHandler(async (req, res) => {
     assignment.clientAcceptedPrice = false;
     assignment.status = 'Price Rejected';
     const updatedAssignment = await assignment.save();
-    
+
     // Safely populate - wrap in try-catch
     try {
-    await updatedAssignment.populate('student', 'name');
+        await updatedAssignment.populate('student', 'name');
     } catch (populateError) {
         console.error('Error populating assignment:', populateError);
         // Continue even if population fails
@@ -2230,19 +2243,19 @@ const rejectPrice = asyncHandler(async (req, res) => {
     let admins = [];
     try {
         admins = await User.find({ role: 'admin' });
-    for (const admin of admins) {
+        for (const admin of admins) {
             try {
-        const notification = await createNotificationWithEmail({
-            userId: admin._id,
+                const notification = await createNotificationWithEmail({
+                    userId: admin._id,
                     message: `Client ${req.user.name} rejected the price ($${updatedAssignment.clientPrice}) for "${updatedAssignment.title}". Please set a new price.`,
-            type: 'assignment',
-            link: '/assignments',
-            req: req
-        });
-        const adminIdForSocket = safeIdToString(admin._id);
-        if (adminIdForSocket) {
-            emitSocketEvent(req, adminIdForSocket, 'newNotification', safeNotificationToJSON(notification));
-        }
+                    type: 'assignment',
+                    link: '/assignments',
+                    req: req
+                });
+                const adminIdForSocket = safeIdToString(admin._id);
+                if (adminIdForSocket) {
+                    emitSocketEvent(req, adminIdForSocket, 'newNotification', safeNotificationToJSON(notification));
+                }
             } catch (error) {
                 console.error(`Error creating notification for admin ${admin._id}:`, error);
                 // Continue with other admins even if one fails
@@ -2258,7 +2271,7 @@ const rejectPrice = asyncHandler(async (req, res) => {
     } catch (error) {
         console.error('Error emitting assignment update:', error);
     }
-    
+
     // Emit refresh events - wrap in try-catch
     try {
         if (updatedAssignment.student) {
@@ -2268,16 +2281,16 @@ const rejectPrice = asyncHandler(async (req, res) => {
             }
         }
         if (admins && Array.isArray(admins)) {
-    admins.forEach(admin => {
+            admins.forEach(admin => {
                 try {
-        const adminIdForRefresh = safeIdToString(admin._id);
-        if (adminIdForRefresh) {
-            emitSocketEvent(req, adminIdForRefresh, 'refreshAssignments', null);
-        }
+                    const adminIdForRefresh = safeIdToString(admin._id);
+                    if (adminIdForRefresh) {
+                        emitSocketEvent(req, adminIdForRefresh, 'refreshAssignments', null);
+                    }
                 } catch (error) {
                     console.error(`Error emitting refresh event for admin ${admin._id}:`, error);
                 }
-    });
+            });
         }
     } catch (error) {
         console.error('Error emitting refresh events:', error);
@@ -2346,7 +2359,7 @@ const uploadPaymentProof = asyncHandler(async (req, res) => {
         // Multer gives us a path relative to where the process started
         // Normalize it to use forward slashes and ensure it's relative to project root
         let normalizedPath = req.file.path.replace(/\\/g, '/'); // Convert backslashes to forward slashes
-        
+
         // Ensure path starts with 'uploads/' for consistency
         if (!normalizedPath.startsWith('uploads/') && !normalizedPath.startsWith('/uploads/')) {
             // If it's just a filename or doesn't have uploads/, add it
@@ -2357,7 +2370,7 @@ const uploadPaymentProof = asyncHandler(async (req, res) => {
                 normalizedPath = 'uploads/' + normalizedPath.replace(/^uploads/, '');
             }
         }
-        
+
         // Remove leading slash if present
         if (normalizedPath.startsWith('/')) {
             normalizedPath = normalizedPath.substring(1);
@@ -2367,10 +2380,10 @@ const uploadPaymentProof = asyncHandler(async (req, res) => {
         const projectRoot = path.resolve(process.cwd());
         const originalFilePath = path.join(projectRoot, req.file.path);
         const normalizedFilePath = path.join(projectRoot, normalizedPath);
-        
+
         let fileExists = false;
         let finalPath = normalizedPath;
-        
+
         // Check if file exists at original path (relative to project root)
         if (fs.existsSync(originalFilePath)) {
             fileExists = true;
@@ -2382,7 +2395,7 @@ const uploadPaymentProof = asyncHandler(async (req, res) => {
             if (!finalPath.startsWith('uploads/')) {
                 finalPath = 'uploads/' + finalPath.replace(/^uploads/, '');
             }
-        } 
+        }
         // Check normalized path
         else if (fs.existsSync(normalizedFilePath)) {
             fileExists = true;
@@ -2433,7 +2446,7 @@ const uploadPaymentProof = asyncHandler(async (req, res) => {
 
         assignment.status = 'Payment Proof Submitted';
         const updatedAssignment = await assignment.save();
-        
+
         // Safely populate - wrap in try-catch
         try {
             await updatedAssignment.populate('student', 'name');
@@ -2442,7 +2455,7 @@ const uploadPaymentProof = asyncHandler(async (req, res) => {
             console.error('Error populating assignment:', populateError);
             // Continue even if population fails
         }
-        
+
         // Notify all admins - wrap in try-catch to prevent crashes
         let admins = [];
         try {
@@ -2458,7 +2471,7 @@ const uploadPaymentProof = asyncHandler(async (req, res) => {
                             link: '/assignments',
                             req: req
                         });
-                        
+
                         // Convert notification to JSON safely
                         let notificationData;
                         try {
@@ -2471,7 +2484,7 @@ const uploadPaymentProof = asyncHandler(async (req, res) => {
                                 link: adminNotification.link
                             };
                         }
-                        
+
                         emitSocketEvent(req, adminId, 'newNotification', notificationData);
                     } catch (error) {
                         console.error(`Error creating notification for admin ${admin._id}:`, error);
@@ -2483,15 +2496,15 @@ const uploadPaymentProof = asyncHandler(async (req, res) => {
             console.error('Error fetching admins or creating notifications:', error);
             // Continue even if admin notification fails
         }
-        
+
         // Emit assignment update events - wrap in try-catch
         try {
-                await emitAssignmentUpdate(req, updatedAssignment, 'assignmentUpdated');
+            await emitAssignmentUpdate(req, updatedAssignment, 'assignmentUpdated');
         } catch (error) {
             console.error('Error emitting assignment update:', error);
             // Continue even if emit fails
         }
-        
+
         // Emit refresh events - wrap in try-catch
         try {
             const userIdStr = safeIdToString(req.user._id);
@@ -2499,7 +2512,7 @@ const uploadPaymentProof = asyncHandler(async (req, res) => {
                 emitSocketEvent(req, userIdStr, 'refreshAssignments', null);
                 emitSocketEvent(req, userIdStr, 'refreshNewSubmissions', null);
             }
-            
+
             if (admins && Array.isArray(admins)) {
                 admins.forEach(admin => {
                     try {
@@ -2517,10 +2530,10 @@ const uploadPaymentProof = asyncHandler(async (req, res) => {
             console.error('Error emitting refresh events:', error);
             // Continue even if refresh events fail
         }
-        
+
         // Always send response even if some operations failed
         try {
-                res.json(formatAssignment(updatedAssignment, req.user.role));
+            res.json(formatAssignment(updatedAssignment, req.user.role));
         } catch (error) {
             console.error('Error formatting assignment for response:', error);
             // Send a basic response even if formatting fails
@@ -2546,7 +2559,7 @@ const uploadPaymentProof = asyncHandler(async (req, res) => {
             } else {
                 res.status(500);
             }
-            res.json({ 
+            res.json({
                 message: error.message || 'Error uploading payment proof. Please try again.',
                 error: process.env.NODE_ENV === 'development' ? error.stack : undefined
             });
@@ -2572,11 +2585,11 @@ const confirmPayment = asyncHandler(async (req, res) => {
 
     assignment.status = 'Paid';
     const updatedAssignment = await assignment.save();
-    
+
     // Safely populate - wrap in try-catch
     try {
-    await updatedAssignment.populate('student', 'name');
-    await updatedAssignment.populate('writer', 'name');
+        await updatedAssignment.populate('student', 'name');
+        await updatedAssignment.populate('writer', 'name');
     } catch (populateError) {
         console.error('Error populating assignment:', populateError);
         // Continue even if population fails
@@ -2585,13 +2598,13 @@ const confirmPayment = asyncHandler(async (req, res) => {
     // Notify user - wrap in try-catch
     try {
         if (updatedAssignment.student) {
-    const userNotification = await createNotificationWithEmail({
+            const userNotification = await createNotificationWithEmail({
                 userId: updatedAssignment.student,
                 message: `Your payment for "${updatedAssignment.title}" has been confirmed! Writer will start working on it.`,
-        type: 'assignment',
-        link: '/my-assignments',
-        req: req
-    });
+                type: 'assignment',
+                link: '/my-assignments',
+                req: req
+            });
             const studentIdForSocket = safeIdToString(updatedAssignment.student);
             if (studentIdForSocket) {
                 emitSocketEvent(req, studentIdForSocket, 'newNotification', safeNotificationToJSON(userNotification));
@@ -2618,7 +2631,7 @@ const confirmPayment = asyncHandler(async (req, res) => {
     } catch (error) {
         console.error('Error emitting assignment update:', error);
     }
-    
+
     // Emit refresh events - wrap in try-catch
     try {
         if (updatedAssignment.student) {

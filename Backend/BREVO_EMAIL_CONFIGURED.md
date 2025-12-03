@@ -9,7 +9,7 @@ SMTP_HOST=smtp-relay.brevo.com
 SMTP_PORT=587
 SMTP_SECURE=false
 SMTP_USER=9c5ddf001@smtp-brevo.com
-SMTP_PASS=xsmtpsib-0b678d561a73881d7d8cdd6391ce4b8776dab19a8a1e8774839d21e0275a681c-FhVTz2ctun1XInlj
+SMTP_PASS=YOUR_BREVO_SMTP_KEY
 SMTP_FROM=induwara205@gmail.com
 SMTP_FROM_NAME=Global eHelp
 ```
